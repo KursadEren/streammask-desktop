@@ -1,0 +1,33 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><style>
+:root{--bg:#14131f;--bar:#1c1b2b;--line:#2a2942;--txt:#f1f0fa;--mut:#9895b8;--pri:#7B6CFF;--red:#ff5c5c}
+*{box-sizing:border-box}html,body{margin:0;height:86px;overflow:hidden;background:var(--bg);color:var(--txt);font:12.5px -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;-webkit-user-select:none;user-select:none}
+.tabs{height:40px;display:flex;align-items:flex-end;padding:8px 8px 0 84px;gap:4px;-webkit-app-region:drag}
+.tab{-webkit-app-region:no-drag;max-width:200px;min-width:90px;flex:1;height:30px;border-radius:9px 9px 0 0;background:#1a1928;border:1px solid var(--line);border-bottom:0;display:flex;align-items:center;gap:6px;padding:0 8px 0 10px;cursor:default;color:var(--mut)}
+.tab.active{background:var(--bar);color:var(--txt);border-color:#353456}.tab span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tab b{width:14px;height:14px;border-radius:50%;text-align:center;line-height:14px;font-size:11px;font-weight:400;cursor:pointer}.tab b:hover{background:#3a3950}
+.tab.loading span::before{content:"⟳ ";color:var(--pri)}
+.newtab{-webkit-app-region:no-drag;width:28px;height:28px;border:0;background:transparent;color:var(--mut);font-size:18px;cursor:pointer;border-radius:8px}.newtab:hover{background:#2a2942;color:#fff}
+.bar{height:46px;background:var(--bar);display:flex;align-items:center;gap:6px;padding:0 10px;border-bottom:1px solid var(--line)}
+.bar button{width:30px;height:30px;border:0;background:transparent;color:var(--txt);font-size:15px;border-radius:8px;cursor:pointer}.bar button:hover{background:#2a2942}.bar button:disabled{opacity:.3}
+.bar input{flex:1;height:32px;background:#0f0e1a;color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:0 12px 0 34px;font:13px inherit;outline:0}.bar input:focus{border-color:var(--pri)}
+.urlwrap{flex:1;position:relative;display:flex;align-items:center}.urlwrap::before{content:"🛡";position:absolute;left:11px;font-size:13px}
+.badge{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:#ffb3b3;padding:0 8px;white-space:nowrap}.badge i{width:8px;height:8px;border-radius:50%;background:var(--red);box-shadow:0 0 8px var(--red)}
+</style></head><body>
+<div class="tabs" id="tabs"></div>
+<div class="bar">
+  <button id="back" title="Back">‹</button><button id="fwd" title="Forward">›</button><button id="reload" title="Reload">⟳</button>
+  <div class="urlwrap"><input id="url" placeholder="Search or enter address – this window is invisible to screen capture" spellcheck="false"></div>
+  <span class="badge"><i></i>INVISIBLE TO CAPTURE</span>
+</div>
+<script>
+const $=id=>document.getElementById(id); let cur=null; let editing=false;
+window.pb.onTabs(d=>{ const t=$('tabs'); t.innerHTML=''; cur=d.tabs.find(x=>x.id===d.active);
+  for(const tab of d.tabs){ const el=document.createElement('div'); el.className='tab'+(tab.id===d.active?' active':'')+(tab.loading?' loading':''); el.innerHTML=`<span></span><b title="Close">×</b>`; el.querySelector('span').textContent=tab.title||'New tab'; el.onclick=()=>window.pb.send({type:'switch',id:tab.id}); el.querySelector('b').onclick=e=>{e.stopPropagation();window.pb.send({type:'close',id:tab.id})}; t.appendChild(el); }
+  const nb=document.createElement('button'); nb.className='newtab'; nb.textContent='+'; nb.title='New tab'; nb.onclick=()=>window.pb.send({type:'new'}); t.appendChild(nb);
+  if(cur){ if(!editing) $('url').value=cur.url==='about:blank'?'':cur.url; $('back').disabled=!cur.canBack; $('fwd').disabled=!cur.canFwd; }
+});
+$('url').onfocus=()=>{editing=true;$('url').select()}; $('url').onblur=()=>{editing=false};
+$('url').onkeydown=e=>{ if(e.key==='Enter'){ window.pb.send({type:'go',url:$('url').value}); $('url').blur(); } if(e.key==='Escape'){ $('url').blur(); if(cur) $('url').value=cur.url; } };
+$('back').onclick=()=>window.pb.send({type:'back'}); $('fwd').onclick=()=>window.pb.send({type:'forward'}); $('reload').onclick=()=>window.pb.send({type:'reload'});
+document.addEventListener('keydown',e=>{ const m=e.metaKey||e.ctrlKey; if(m&&e.key==='t'){window.pb.send({type:'new'});e.preventDefault()} if(m&&e.key==='w'&&cur){window.pb.send({type:'close',id:cur.id});e.preventDefault()} if(m&&e.key==='l'){$('url').focus();e.preventDefault()} if(m&&e.key==='r'){window.pb.send({type:'reload'});e.preventDefault()} });
+</script></body></html>

@@ -1,0 +1,33 @@
+{
+  "name": "streammask-desktop",
+  "productName": "StreamMask Desktop",
+  "version": "0.1.0",
+  "description": "Open-source stream privacy tool: hides chosen apps and notifications while you're live, and gives you a browser window that screen capture can't see.",
+  "main": "src/main.js",
+  "license": "MIT",
+  "author": "KursadEren",
+  "repository": "https://github.com/KursadEren/streammask-desktop",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --mac --publish never"
+  },
+  "build": {
+    "appId": "io.github.kursaderen.streammask",
+    "productName": "StreamMask Desktop",
+    "files": [
+      "src/**/*",
+      "assets/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.utilities",
+      "target": [
+        "dmg"
+      ],
+      "icon": "assets/icon.icns"
+    }
+  },
+  "devDependencies": {
+    "electron": "^44.4.1",
+    "electron-builder": "^26.15.3"
+  }
+}
