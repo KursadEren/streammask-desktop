@@ -4,6 +4,7 @@ Open-source stream privacy tool for macOS. One click before you go live:
 
 - **Hides the apps you choose** (WhatsApp, Mail, Telegram, Discord, Slack…) – hide, minimize or quit, and restores them when the stream ends.
 - **Guard mode** – if a hidden app pops up during the stream, it is hidden again within seconds.
+- **Hide desktop icons** (optional) – files and folders on your Desktop disappear while live and come back when you end.
 - **Silences notifications** – switches macOS Focus (Do Not Disturb) on while live, off afterwards.
 - **Private Browser** – a browser window that **screen capture cannot see**. Open your bank, e-mail or DMs there; OBS, Discord, Zoom, Meet and macOS screen recording show nothing, even when you share the whole screen. Personal info on pages inside it is masked with `*****` as well (same engine as the [StreamMask Chrome extension](https://github.com/KursadEren/streammask)).
 - StreamMask's own windows are excluded from capture too.
@@ -25,6 +26,9 @@ The app is not notarized yet; on first launch right-click → Open, or run `xatt
 - `⌘⇧L` go live / end stream
 - `⌘⇧P` show / hide the Private Browser
 - Inside the Private Browser: `⌘T` new tab, `⌘W` close tab, `⌘L` address bar, `⌘R` reload
+
+## Is the Private Browser safe?
+Pages inside it run in Chromium's normal sandbox with Node integration off and context isolation on: a website cannot read your files, other windows or anything on the computer. The only code StreamMask injects is the masking script, which runs inside the page and sends nothing anywhere.
 
 ## How the invisibility works
 The Private Browser window is created with content protection (`NSWindow.sharingType = .none` on macOS, `WDA_EXCLUDEFROMCAPTURE` on Windows). Screen-capture APIs skip such windows entirely: they are blank or absent in recordings and shares, while you see them normally on your monitor.

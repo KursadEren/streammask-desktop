@@ -79,4 +79,14 @@ async function setFocus(on) {
   return run('shortcuts', ['run', on ? FOCUS_ON : FOCUS_OFF], 15000).then(() => true).catch(() => false);
 }
 
-module.exports = { runningBundleIds, isRunning, setVisible, setMinimized, quit, launch, installedApps, focusShortcutsInstalled, setFocus, FOCUS_ON, FOCUS_OFF };
+/* ---------- Desktop icons (Finder) ---------- */
+async function desktopIconsShown() {
+  try { return (await run('defaults', ['read', 'com.apple.finder', 'CreateDesktop'])).trim() !== '0' && (await run('defaults', ['read', 'com.apple.finder', 'CreateDesktop'])).trim().toLowerCase() !== 'false'; }
+  catch (e) { return true; }   // anahtar yoksa varsayılan: gösteriliyor
+}
+async function setDesktopIcons(show) {
+  await run('defaults', ['write', 'com.apple.finder', 'CreateDesktop', '-bool', show ? 'true' : 'false']);
+  await run('killall', ['Finder']).catch(() => {});
+}
+
+module.exports = { desktopIconsShown, setDesktopIcons, runningBundleIds, isRunning, setVisible, setMinimized, quit, launch, installedApps, focusShortcutsInstalled, setFocus, FOCUS_ON, FOCUS_OFF };

@@ -11,6 +11,7 @@ const DEFAULTS = {
   guard: true,               // re-hide apps that pop up while live
   focus: true,               // switch Focus (Do Not Disturb) on while live
   hideSelf: true,            // keep StreamMask windows out of screen capture
+  hideDesktop: false,        // hide Finder desktop icons while live
   maskWords: [],             // extra words masked inside the private browser
   homepage: 'https://duckduckgo.com'
 };
@@ -21,7 +22,7 @@ function loadSettings() {
 function saveSettings() { fs.mkdirSync(path.dirname(SETTINGS_FILE()), { recursive: true }); fs.writeFileSync(SETTINGS_FILE(), JSON.stringify(settings, null, 2)); }
 
 /* ---------------- live state ---------------- */
-const live = { on: false, since: 0, snapshot: [], focusApplied: false, log: [] };
+const live = { on: false, since: 0, snapshot: [], focusApplied: false, desktopHidden: false, log: [] };
 let guardTimer = null;
 let controlWin = null, tray = null;
 
@@ -60,6 +61,10 @@ async function goLive() {
       log(live.focusApplied ? 'Focus (Do Not Disturb) on' : 'Focus shortcut failed');
     } else log('Focus shortcuts not installed – notifications are NOT silenced');
   }
+  if (settings.hideDesktop) {
+    try { if (await mac.desktopIconsShown()) { await mac.setDesktopIcons(false); live.desktopHidden = true; log('Desktop icons hidden'); } }
+    catch (e) { log('Desktop icons: failed (' + e.message + ')'); }
+  }
   if (settings.guard) guardTimer = setInterval(guardTick, 3000);
   log('LIVE');
 }
@@ -91,6 +96,7 @@ async function endLive() {
     } catch (e) { log(`${s.name}: restore failed (${e.message})`); }
   }
   if (live.focusApplied) { await mac.setFocus(false); live.focusApplied = false; log('Focus off'); }
+  if (live.desktopHidden) { try { await mac.setDesktopIcons(true); log('Desktop icons restored'); } catch (e) { log('Desktop icons: restore failed'); } live.desktopHidden = false; }
   live.snapshot = [];
   log('Offline');
 }

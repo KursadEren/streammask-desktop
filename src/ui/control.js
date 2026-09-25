@@ -9,7 +9,7 @@ async function render() {
   $('live').classList.toggle('on', state.live);
   $('liveText').textContent = state.live ? 'End stream' : 'Go live';
   $('liveSub').textContent = state.live ? `LIVE for ${since(state.since)} · apps hidden, restore on end` : 'Hides the apps below, silences notifications';
-  $('guard').checked = !!s.guard; $('focus').checked = !!s.focus; $('hideSelf').checked = !!s.hideSelf;
+  $('guard').checked = !!s.guard; $('focus').checked = !!s.focus; $('hideSelf').checked = !!s.hideSelf; $('hideDesktop').checked = !!s.hideDesktop;
   // rules
   const box = $('rules'); box.innerHTML = '';
   if (!s.rules.length) box.innerHTML = '<div class="empty">No apps yet. Add WhatsApp, Mail, Telegram, Discord, Slack…</div>';
@@ -52,6 +52,7 @@ async function init() {
 
   $('live').onclick = async () => { $('live').disabled = true; state = await window.api.setLive(!state.live); $('live').disabled = false; render(); };
   $('guard').onchange = e => { state.settings.guard = e.target.checked; save(); };
+  $('hideDesktop').onchange = e => { state.settings.hideDesktop = e.target.checked; save(); };
   $('focus').onchange = e => { state.settings.focus = e.target.checked; save(); };
   $('hideSelf').onchange = e => { state.settings.hideSelf = e.target.checked; save(); };
   $('openPB').onclick = () => window.api.openPrivateBrowser();
