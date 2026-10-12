@@ -2,7 +2,9 @@
 const { app, BrowserWindow, WebContentsView, ipcMain, globalShortcut, Tray, Menu, nativeImage, shell, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const mac = require('./mac');
+const { Bridge } = require('./bridge');
 
 const isMac = process.platform === 'darwin';
 const SETTINGS_FILE = () => path.join(app.getPath('userData'), 'settings.json');
@@ -13,13 +15,39 @@ const DEFAULTS = {
   hideSelf: true,            // keep StreamMask windows out of screen capture
   hideDesktop: false,        // hide Finder desktop icons while live
   maskWords: [],             // extra words masked inside the private browser
-  homepage: 'https://duckduckgo.com'
+  homepage: 'https://duckduckgo.com',
+  bridge: true,              // let the browser extension and this app share one switch
+  bridgePort: 47811,
+  bridgeToken: ''            // first run generates one; paste it into the extension
 };
 let settings = { ...DEFAULTS };
 function loadSettings() {
   try { settings = { ...DEFAULTS, ...JSON.parse(fs.readFileSync(SETTINGS_FILE(), 'utf8')) }; } catch (e) { settings = { ...DEFAULTS }; }
+  if (!settings.bridgeToken) { settings.bridgeToken = crypto.randomBytes(16).toString('hex'); saveSettings(); }
 }
 function saveSettings() { fs.mkdirSync(path.dirname(SETTINGS_FILE()), { recursive: true }); fs.writeFileSync(SETTINGS_FILE(), JSON.stringify(settings, null, 2)); }
+
+/* ---------------- browser extension bridge ----------------
+ * Uzantı ile tek anahtar: buradan yayına geçince tarayıcıda maskeleme açılır,
+ * uzantıdan Yayın Modu açılınca da buradaki kurallar çalışır. Yalnızca 127.0.0.1
+ * dinlenir ve jeton zorunludur (ayrıntı: src/bridge.js). */
+const bridge = new Bridge();
+function bridgeState() { return { live: live.on, since: live.since }; }
+function applyBridge() {
+  bridge.stop();
+  if (!settings.bridge) return;
+  bridge.start({
+    port: Number(settings.bridgePort) || 47811,
+    token: settings.bridgeToken,
+    getState: bridgeState,
+    onCommand: (cmd, value) => {
+      if (cmd !== 'live') return;
+      if (value && !live.on) { log('Extension went live – applying rules'); goLive(); }
+      else if (!value && live.on) { log('Extension ended the stream – restoring'); endLive(); }
+    },
+    onLog: (m) => log(m)
+  });
+}
 
 /* ---------------- live state ---------------- */
 const live = { on: false, since: 0, snapshot: [], focusApplied: false, desktopHidden: false, log: [] };
@@ -32,10 +60,11 @@ function log(msg) {
   broadcast();
 }
 function publicState() {
-  return { live: live.on, since: live.since, settings, log: live.log, focusReady: null, platform: process.platform };
+  return { live: live.on, since: live.since, settings, log: live.log, focusReady: null, platform: process.platform, bridgeClients: bridge.connections };
 }
 function broadcast() {
   if (controlWin && !controlWin.isDestroyed()) controlWin.webContents.send('state', publicState());
+  bridge.broadcast({ type: 'state', ...bridgeState() });
   updateTray();
 }
 
@@ -199,7 +228,15 @@ ipcMain.handle('setLive', async (e, on) => { if (on) await goLive(); else await 
 ipcMain.handle('installedApps', async () => mac.installedApps());
 ipcMain.handle('runningApps', async () => mac.runningBundleIds());
 ipcMain.handle('appIcon', async (e, p) => { try { const img = await app.getFileIcon(p, { size: 'normal' }); return img.toDataURL(); } catch (x) { return null; } });
-ipcMain.handle('saveSettings', (e, s) => { settings = { ...settings, ...s }; saveSettings(); if (controlWin) controlWin.setContentProtection(!!settings.hideSelf); broadcast(); return settings; });
+ipcMain.handle('saveSettings', (e, s) => {
+  const before = settings.bridge + ':' + settings.bridgePort + ':' + settings.bridgeToken;
+  settings = { ...settings, ...s };
+  saveSettings();
+  if (controlWin) controlWin.setContentProtection(!!settings.hideSelf);
+  if (before !== settings.bridge + ':' + settings.bridgePort + ':' + settings.bridgeToken) applyBridge();
+  broadcast();
+  return settings;
+});
 ipcMain.handle('openPrivateBrowser', () => { openPrivateBrowser(); });
 ipcMain.handle('openExternal', (e, url) => shell.openExternal(url));
 ipcMain.handle('openShortcuts', () => shell.openExternal('shortcuts://'));
@@ -239,6 +276,7 @@ function updateTray() {
 
 app.whenReady().then(() => {
   loadSettings();
+  applyBridge();
   createControl();
   tray = new Tray(trayIcon());
   updateTray();
@@ -252,3 +290,4 @@ app.on('before-quit', async e => {
   else app.isQuitting = true;
 });
 app.on('window-all-closed', () => { /* keep running in tray */ });
+app.on('will-quit', () => bridge.stop());

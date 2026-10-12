@@ -7,6 +7,7 @@ Open-source stream privacy tool for macOS. One click before you go live:
 - **Hide desktop icons** (optional) – files and folders on your Desktop disappear while live and come back when you end.
 - **Silences notifications** – switches macOS Focus (Do Not Disturb) on while live, off afterwards.
 - **Private Browser** – a browser window that **screen capture cannot see**. Open your bank, e-mail or DMs there; OBS, Discord, Zoom, Meet and macOS screen recording show nothing, even when you share the whole screen. Personal info on pages inside it is masked with `*****` as well (same engine as the [StreamMask Chrome extension](https://github.com/KursadEren/streammask)).
+- **Browser extension bridge** – pairs with the [StreamMask Chrome extension](https://github.com/KursadEren/streammask) so one switch covers both: going live here turns masking and Stream Mode on in Chrome, and turning Stream Mode on in the browser hides the apps here. Turn it on in the control panel and paste the pairing code into the extension popup.
 - StreamMask's own windows are excluded from capture too.
 
 Nothing leaves your machine: no server, no accounts, no analytics. Settings live in a local JSON file.
@@ -21,6 +22,9 @@ The app is not notarized yet; on first launch right-click → Open, or run `xatt
 ### Permissions (macOS asks once)
 - **Automation → System Events** and **Accessibility**: needed to hide / minimize / quit other apps. macOS shows the prompt the first time you go live.
 - **Focus**: macOS has no public API for Do Not Disturb, so StreamMask runs two Shortcuts you create once (30 seconds): `StreamMask Focus On` (Set Focus → Do Not Disturb → On until turned off) and `StreamMask Focus Off` (Set Focus → Do Not Disturb → Off). The panel tells you when they are detected.
+
+## Browser extension bridge
+The app listens on `127.0.0.1:47811` only, and every connection must present the pairing code shown in the control panel (any web page can open a WebSocket to localhost, so the code is what keeps strangers out). Press **New** to rotate the code; connected extensions then have to be paired again. Turn the bridge off and the port is closed.
 
 ## Shortcuts
 - `⌘⇧L` go live / end stream

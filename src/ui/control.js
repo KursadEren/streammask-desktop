@@ -10,6 +10,13 @@ async function render() {
   $('liveText').textContent = state.live ? 'End stream' : 'Go live';
   $('liveSub').textContent = state.live ? `LIVE for ${since(state.since)} · apps hidden, restore on end` : 'Hides the apps below, silences notifications';
   $('guard').checked = !!s.guard; $('focus').checked = !!s.focus; $('hideSelf').checked = !!s.hideSelf; $('hideDesktop').checked = !!s.hideDesktop;
+  $('bridge').checked = !!s.bridge;
+  $('bridgeCard').style.display = s.bridge ? '' : 'none';
+  $('bridgeToken').textContent = s.bridgeToken || '';
+  const n = state.bridgeClients || 0;
+  $('bridgeStatus').innerHTML = n
+    ? `<b style="color:var(--grn)">${n} browser${n > 1 ? 's' : ''} connected</b> · port ${s.bridgePort}`
+    : `Waiting for the extension · port ${s.bridgePort}`;
   // rules
   const box = $('rules'); box.innerHTML = '';
   if (!s.rules.length) box.innerHTML = '<div class="empty">No apps yet. Add WhatsApp, Mail, Telegram, Discord, Slack…</div>';
@@ -56,6 +63,17 @@ async function init() {
   $('focus').onchange = e => { state.settings.focus = e.target.checked; save(); };
   $('hideSelf').onchange = e => { state.settings.hideSelf = e.target.checked; save(); };
   $('openPB').onclick = () => window.api.openPrivateBrowser();
+  $('bridge').onchange = e => { state.settings.bridge = e.target.checked; save(); };
+  $('copyToken').onclick = async () => {
+    try { await navigator.clipboard.writeText(state.settings.bridgeToken || ''); $('copyToken').textContent = 'Copied'; setTimeout(() => { $('copyToken').textContent = 'Copy'; }, 1500); } catch (x) {}
+  };
+  $('newToken').onclick = () => {
+    const b = new Uint8Array(16);
+    crypto.getRandomValues(b);
+    state.settings.bridgeToken = [...b].map(x => x.toString(16).padStart(2, '0')).join('');
+    save();                          // jeton değişince köprü kendiliğinden yeniden kurulur
+  };
+  setInterval(async () => { const s = await window.api.state(); state.bridgeClients = s.bridgeClients; render(); }, 4000);
   $('gh').onclick = e => { e.preventDefault(); window.api.openExternal('https://github.com/KursadEren/streammask-desktop'); };
   $('addApp').onclick = async () => {
     const p = $('picker'); p.classList.toggle('open');

@@ -62,6 +62,23 @@ a{color:#a99cff}
   <div class="h" style="margin-top:12px"><div><div class="t">Keep StreamMask itself off the stream</div><div class="s">This panel is excluded from screen capture too</div></div><label class="switch"><input type="checkbox" id="hideSelf"><span></span></label></div>
 </section>
 
+<section>
+  <div class="h">
+    <div><div class="t">Browser extension bridge</div><div class="s">One switch for both: going live here turns masking on in Chrome, and the other way round</div></div>
+    <label class="switch"><input type="checkbox" id="bridge"><span></span></label>
+  </div>
+  <div class="card" id="bridgeCard">
+    Paste this pairing code into the StreamMask extension (popup → StreamMask Desktop).
+    It only accepts connections from this computer.
+    <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+      <code id="bridgeToken" style="flex:1;background:#0c0b16;border:1px solid var(--line);border-radius:8px;padding:6px 9px;font:11px ui-monospace,Menlo,monospace;color:#c8c5ff;overflow:hidden;text-overflow:ellipsis;-webkit-user-select:all;user-select:all"></code>
+      <button class="btn" id="copyToken">Copy</button>
+      <button class="btn" id="newToken" title="Generate a new code; connected extensions must be re-paired">New</button>
+    </div>
+    <div id="bridgeStatus" style="margin-top:8px"></div>
+  </div>
+</section>
+
 <section><div class="t">Activity</div><div class="log" id="log"><div>Ready.</div></div></section>
 <footer><span><span class="kbd">⌘⇧L</span> go live / end</span><span>Runs in the menu bar · <a href="#" id="gh">Open source</a></span></footer>
 <script src="control.js"></script>
