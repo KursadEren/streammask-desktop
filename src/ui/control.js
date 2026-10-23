@@ -34,9 +34,55 @@ async function render() {
   const chips = $('chips'), input = $('wordInput');
   chips.querySelectorAll('.chip').forEach(c => c.remove());
   s.maskWords.forEach((w, i) => { const c = document.createElement('span'); c.className = 'chip'; c.textContent = w; const b = document.createElement('button'); b.textContent = '×'; b.onclick = () => { s.maskWords.splice(i, 1); save(); }; c.appendChild(b); chips.insertBefore(c, input); });
+  renderMasking();
   // log
   $('log').innerHTML = (state.log.length ? state.log : [{ t: Date.now(), msg: 'Ready.' }]).map(l => `<div><b>${new Date(l.t).toLocaleTimeString()}</b> ${l.msg}</div>`).join('');
 }
+const CATS = [['phone','Phone'],['email','E-mail'],['id','ID number'],['iban','IBAN'],
+              ['card','Card'],['ip','IP address'],['secret','API key'],['custom','Your words']];
+
+/* Hangi ülkelerin kimlik desenleri etkin: açıkça seçilmediyse sistem diline göre */
+function activeRegions() {
+  const s = state.settings;
+  return Array.isArray(s.maskIdRegions) ? s.maskIdRegions : (state.maskMeta?.defaultRegions || []);
+}
+function renderMasking() {
+  const s = state.settings;
+  const cats = s.maskCategories || {};
+  const box = $('cats');
+  box.innerHTML = '';
+  for (const [key, label] of CATS) {
+    const l = document.createElement('label');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = cats[key] !== false;
+    cb.onchange = () => { s.maskCategories = { ...cats, [key]: cb.checked }; save(); };
+    l.appendChild(cb);
+    l.appendChild(document.createTextNode(label));
+    box.appendChild(l);
+  }
+  document.querySelectorAll('#maskStyle button').forEach(b => {
+    b.classList.toggle('on', b.dataset.style === (s.maskStyle || 'stars'));
+    b.onclick = () => { s.maskStyle = b.dataset.style; save(); };
+  });
+  const rb = $('regions');
+  rb.innerHTML = '';
+  const on = new Set(activeRegions());
+  for (const r of (state.maskMeta?.regions || [])) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = r;
+    b.className = on.has(r) ? 'on' : '';
+    b.onclick = () => {
+      const cur = new Set(activeRegions());
+      if (cur.has(r)) cur.delete(r); else cur.add(r);
+      s.maskIdRegions = (state.maskMeta?.regions || []).filter(x => cur.has(x));
+      save();
+    };
+    rb.appendChild(b);
+  }
+}
+
 async function save() { state.settings = await window.api.saveSettings(state.settings); render(); }
 async function refreshFocus() {
   const ok = await window.api.focusReady();

@@ -5,6 +5,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 const mac = require('./mac');
 const { Bridge } = require('./bridge');
+const detect = require('./content/detect.js');   // ülke listesi ve varsayılanlar için
 
 const isMac = process.platform === 'darwin';
 const SETTINGS_FILE = () => path.join(app.getPath('userData'), 'settings.json');
@@ -15,6 +16,10 @@ const DEFAULTS = {
   hideSelf: true,            // keep StreamMask windows out of screen capture
   hideDesktop: false,        // hide Finder desktop icons while live
   maskWords: [],             // extra words masked inside the private browser
+  // Gizli tarayıcıdaki maskeleme, uzantıyla aynı motoru kullanır (src/content/)
+  maskCategories: { phone: true, email: true, id: true, iban: true, card: true, ip: true, custom: true, secret: true },
+  maskIdRegions: null,       // null = sistem diline göre otomatik
+  maskStyle: 'stars',        // stars | same | partial | label
   homepage: 'https://duckduckgo.com',
   bridge: true,              // let the browser extension and this app share one switch
   bridgePort: 47811,
@@ -60,7 +65,11 @@ function log(msg) {
   broadcast();
 }
 function publicState() {
-  return { live: live.on, since: live.since, settings, log: live.log, focusReady: null, platform: process.platform, bridgeClients: bridge.connections };
+  return {
+    live: live.on, since: live.since, settings, log: live.log, focusReady: null,
+    platform: process.platform, bridgeClients: bridge.connections,
+    maskMeta: { regions: detect.ID_REGIONS, defaultRegions: detect.defaultRegions(app.getLocale()) }
+  };
 }
 function broadcast() {
   if (controlWin && !controlWin.isDestroyed()) controlWin.webContents.send('state', publicState());
@@ -165,12 +174,30 @@ function pbSend() {
     }))
   });
 }
+/* Sayfaya gönderilen maskeleme ayarları. Yeni ayar yalnızca yeni sekmelerde
+ * ve yeniden yüklemede geçerli olur; açık sekmeler için pbReloadAll çağrılır. */
+function maskArg() {
+  const payload = {
+    enabled: true,
+    categories: settings.maskCategories,
+    customWords: settings.maskWords || [],
+    idRegions: settings.maskIdRegions,
+    maskStyle: settings.maskStyle,
+    uiLanguage: app.getLocale()
+  };
+  return '--streammask-settings=' + Buffer.from(JSON.stringify(payload)).toString('base64');
+}
+function pbReloadAll() {
+  if (!pb) return;
+  for (const t of pb.tabs) { try { t.view.webContents.reload(); } catch (e) {} }
+}
+
 function pbNewTab(url) {
   const view = new WebContentsView({
     webPreferences: {
       partition: 'persist:private', preload: path.join(__dirname, 'browser', 'preload-page.js'),
       contextIsolation: true, sandbox: false, nodeIntegration: false,
-      additionalArguments: ['--streammask-words=' + Buffer.from(JSON.stringify(settings.maskWords || [])).toString('base64')]
+      additionalArguments: [maskArg()]
     }
   });
   const id = ++tabSeq;
@@ -230,10 +257,12 @@ ipcMain.handle('runningApps', async () => mac.runningBundleIds());
 ipcMain.handle('appIcon', async (e, p) => { try { const img = await app.getFileIcon(p, { size: 'normal' }); return img.toDataURL(); } catch (x) { return null; } });
 ipcMain.handle('saveSettings', (e, s) => {
   const before = settings.bridge + ':' + settings.bridgePort + ':' + settings.bridgeToken;
+  const maskBefore = maskArg();
   settings = { ...settings, ...s };
   saveSettings();
   if (controlWin) controlWin.setContentProtection(!!settings.hideSelf);
   if (before !== settings.bridge + ':' + settings.bridgePort + ':' + settings.bridgeToken) applyBridge();
+  if (maskBefore !== maskArg()) pbReloadAll();
   broadcast();
   return settings;
 });

@@ -10,7 +10,10 @@
   "scripts": {
     "start": "electron .",
     "dist": "electron-builder --mac --publish never",
-    "test": "node test/bridge.test.js"
+    "test": "npm run test:bridge && npm run test:browser",
+    "sync-engine": "node scripts/sync-engine.js",
+    "test:bridge": "node test/bridge.test.js",
+    "test:browser": "electron test/private-browser.test.js"
   },
   "build": {
     "appId": "io.github.kursaderen.streammask",

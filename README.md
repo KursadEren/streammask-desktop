@@ -6,7 +6,7 @@ Open-source stream privacy tool for macOS. One click before you go live:
 - **Guard mode** – if a hidden app pops up during the stream, it is hidden again within seconds.
 - **Hide desktop icons** (optional) – files and folders on your Desktop disappear while live and come back when you end.
 - **Silences notifications** – switches macOS Focus (Do Not Disturb) on while live, off afterwards.
-- **Private Browser** – a browser window that **screen capture cannot see**. Open your bank, e-mail or DMs there; OBS, Discord, Zoom, Meet and macOS screen recording show nothing, even when you share the whole screen. Personal info on pages inside it is masked with `*****` as well (same engine as the [StreamMask Chrome extension](https://github.com/KursadEren/streammask)).
+- **Private Browser** – a browser window that **screen capture cannot see**. Open your bank, e-mail or DMs there; OBS, Discord, Zoom, Meet and macOS screen recording show nothing, even when you share the whole screen. Personal info on pages inside it is masked there too, with the same engine as the [StreamMask Chrome extension](https://github.com/KursadEren/streammask): phone numbers, e-mails, ID numbers for ten countries, IBANs, cards, IP addresses, API keys and tokens, and your own words — inside Shadow DOM as well. You choose the categories, the countries and how masks look (`*****`, same length, last 4, or a label) in the control panel.
 - **Browser extension bridge** – pairs with the [StreamMask Chrome extension](https://github.com/KursadEren/streammask) so one switch covers both: going live here turns masking and Stream Mode on in Chrome, and turning Stream Mode on in the browser hides the apps here. Turn it on in the control panel and paste the pairing code into the extension popup.
 - StreamMask's own windows are excluded from capture too.
 
@@ -38,6 +38,9 @@ Pages inside it run in Chromium's normal sandbox with Node integration off and c
 The Private Browser window is created with content protection (`NSWindow.sharingType = .none` on macOS, `WDA_EXCLUDEFROMCAPTURE` on Windows). Screen-capture APIs skip such windows entirely: they are blank or absent in recordings and shares, while you see them normally on your monitor.
 
 Limits: an HDMI capture card or a camera pointed at the monitor still sees everything. Existing tabs in your normal Chrome cannot be hidden – open sensitive sites in the Private Browser instead.
+
+## Masking engine
+`src/content/` is generated, not hand-written: it is copied from the browser extension with `npm run sync-engine`. Keeping two copies by hand is what made the desktop version fall behind before, with fixed bugs still living on in it. Point it elsewhere with `STREAMMASK_EXT=/path/to/streammask npm run sync-engine`; `src/content/ENGINE_VERSION` records which extension version is in there.
 
 ## Run from source
 ```bash
