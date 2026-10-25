@@ -315,6 +315,45 @@
     return p;
   }
 
+  /* ================= form alanları ================= */
+
+  /* Alan içeriği henüz desene uymuyorken de gizlenmeli: kullanıcı e-postasını
+   * yazarken "asdasd@gmail.c" geçerli bir adres değil, ama ekranda duruyor.
+   * Bu yüzden iki yoldan bakıyoruz: alanın ne olduğu (ad, autocomplete, etiket)
+   * ve içeriğin yazılmakta olan bir şeye benzeyip benzemediği. */
+  const FIELD_TOKENS = new Set([
+    'email', 'mail', 'eposta', 'emails', 'correo', 'courriel',
+    'phone', 'tel', 'telefon', 'telephone', 'mobile', 'mobil', 'gsm', 'cep',
+    'card', 'kart', 'cc', 'ccnumber', 'cardnumber', 'tarjeta', 'carte',
+    'iban', 'account', 'hesap',
+    'ssn', 'tckn', 'kimlik', 'nif', 'dni', 'cpf', 'cnpj',
+    'passport', 'pasaport', 'birthdate', 'dob', 'address', 'adres'
+  ]);
+
+  /* "telegram" içinde "tel" geçiyor diye gizlenmemeli: tam parça eşleşmesi
+   * aranır, camelCase de parçalanır. */
+  function fieldTokens(text) {
+    return String(text || '')
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter(Boolean);
+  }
+  function looksLikeSensitiveField(attrText) {
+    return fieldTokens(attrText).some(t => FIELD_TOKENS.has(t));
+  }
+
+  /* Yazılmakta olan hassas içerik: tamamlanmamış e-posta, uzayan rakam dizisi */
+  const TYPING = [
+    /[\p{L}\p{N}._%+-]@/u,          // "@" yazılmış: e-posta yazılıyor
+    /\d(?:[\s().-]?\d){5,}/         // 6+ hane: telefon, kart, kimlik yazılıyor
+  ];
+  function isTypingSensitive(value) {
+    const v = String(value || '');
+    if (v.length < 3) return false;
+    return TYPING.some(re => re.test(v));
+  }
+
   /* ================= maske biçimleri ================= */
 
   /* Sabit ***** metni kısalttığı için tablo/satır düzenini kaydırıyordu.
@@ -396,6 +435,8 @@
     maskText,
     maskFor,
     defaultRegions,
+    looksLikeSensitiveField,
+    isTypingSensitive,
     ID_REGIONS,
     LEGACY_REGIONS,
     validators: {

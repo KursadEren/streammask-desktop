@@ -112,13 +112,36 @@
   }
 
   const FORM_SKIP = new Set(['password', 'hidden', 'checkbox', 'radio', 'submit', 'button', 'file', 'range', 'color', 'image', 'reset']);
+  const FIELD_ATTRS = ['name', 'id', 'placeholder', 'aria-label', 'autocomplete', 'data-testid'];
+  const purposeCache = new WeakMap();      // öznitelikler nadiren değişir
+  /* Alanın ne işe yaradığı: adı, autocomplete değeri, etiketi. İçeriğe bakmadan
+   * önce buna bakıyoruz, yoksa e-posta yazılırken adres tamamlanana kadar
+   * ekranda açıkta kalıyordu. */
+  function fieldPurpose(el) {
+    let s = purposeCache.get(el);
+    if (s !== undefined) return s;
+    s = '';
+    for (const a of FIELD_ATTRS) {
+      const v = el.getAttribute(a);
+      if (v) s += ' ' + v;
+    }
+    try {
+      const lab = el.labels && el.labels[0];
+      if (lab) s += ' ' + (lab.textContent || '');
+    } catch (e) { /* labels her ortamda yok */ }
+    purposeCache.set(el, s);
+    return s;
+  }
   function processField(el) {
     const tag = el.tagName;
     if (tag !== 'INPUT' && tag !== 'TEXTAREA') return;
     const t = (el.type || 'text').toLowerCase();
     if (FORM_SKIP.has(t)) return;
     const v = el.value || '';
-    const hit = t === 'tel' || t === 'email' || (v.length >= 5 && maskText(v).n > 0);
+    const hit = t === 'tel' || t === 'email'
+      || D.looksLikeSensitiveField(fieldPurpose(el))
+      || D.isTypingSensitive(v)
+      || (v.length >= 5 && maskText(v).n > 0);
     el.classList.toggle('__yk-secure', hit);
     if (hit) secured.add(el); else secured.delete(el);
   }
