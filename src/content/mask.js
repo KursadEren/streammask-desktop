@@ -18,7 +18,7 @@
 
   const DEFAULTS = {
     enabled: true,
-    categories: { phone: true, email: true, id: true, iban: true, card: true, ip: true, custom: true, secret: true },
+    categories: { phone: true, email: true, id: true, iban: true, card: true, ip: true, custom: true, secret: true, label: false },
     customWords: [],
     whitelist: [],
     idRegions: null,                  // null = tarayıcı diline göre otomatik
@@ -208,6 +208,71 @@
       if (node.nodeType === Node.TEXT_NODE) { processTextNode(node); continue; }
       if (node.shadowRoot) observeShadow(node.shadowRoot);
       processField(node);
+    }
+    scanLabelPairs(root);
+  }
+
+  /* ---------- etiket/değer eşleştirmesi ----------
+   * "Adres: ..." tek bir metin düğümünde geçerse desen yakalıyor. Ama sayfa çoğu
+   * zaman etiketi ve değeri ayrı düğümlere koyuyor: tablo satırı, tanım listesi,
+   * ya da yan yana iki div. Onları burada eşleştiriyoruz.
+   *
+   * Dar tutuluyor: yalnızca etiketin kendisi kısa ve bir alan adıysa, değer de
+   * alan değerine benziyorsa. Aksi halde bir sayfanın yarısı yıldıza dönerdi. */
+  function maskWholeText(node) {
+    const cur = node.nodeValue;
+    const rec = records.get(node);
+    if (rec && cur === rec.masked) return;
+    if (!cur || !cur.trim()) return;
+    if (rec) bump(rec, -1);
+    const out = cur.replace(cur.trim(), D.maskFor(cur.trim(), 'label', maskOptions.style, maskOptions.label));
+    const next = { orig: cur, masked: out, n: 1, by: { label: 1 } };
+    records.set(node, next);
+    bump(next, 1);
+    node.nodeValue = out;
+  }
+
+  function maskValueElement(el) {
+    if (!el || inEditable(el)) return;
+    const text = el.textContent || '';
+    if (!D.isFieldValue(text)) return;
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    let n;
+    while ((n = walker.nextNode())) {
+      if (n.parentElement && SKIP_TAGS.has(n.parentElement.tagName)) continue;
+      maskWholeText(n);
+    }
+  }
+
+  function nextElement(el) {
+    let e = el.nextElementSibling;
+    while (e && !(e.textContent || '').trim()) e = e.nextElementSibling;
+    return e;
+  }
+
+  function scanLabelPairs(root) {
+    if (!settings.categories || !settings.categories.label) return;
+    let host;
+    try { host = root.querySelectorAll ? root : document; } catch (e) { return; }
+    let cells;
+    try { cells = host.querySelectorAll('th, dt, td:first-child, li > b, li > strong, div, span, p'); }
+    catch (e) { return; }
+    let seen = 0;
+    for (const el of cells) {
+      if (++seen > 4000) break;                       // çok büyük sayfalarda sınır
+      if (el.children.length > 1) continue;           // etiket tek parça olmalı
+      if (!D.looksLikeLabelText(el.textContent)) continue;
+      const tag = el.tagName;
+      if (tag === 'TH' || tag === 'TD') {
+        const row = el.closest('tr');
+        if (!row) continue;
+        const cellsInRow = row.children;
+        // iki sütunlu "etiket | değer" satırı en sık görülen hâli
+        if (cellsInRow.length === 2) maskValueElement(cellsInRow[1] === el ? cellsInRow[0] : cellsInRow[1]);
+        else maskValueElement(nextElement(el));
+      } else {
+        maskValueElement(nextElement(el));
+      }
     }
   }
 

@@ -277,6 +277,74 @@
     { re: () => /\b(?:Bearer|Basic)\s+([A-Za-z0-9._~+/=-]{20,})/g, group: 1, check: secretValue }
   ];
 
+  /* ================= etiketli alanlar ================= */
+
+  /* Checksum'ı olmayan bilgiler (adres, ad soyad, doğum tarihi, sipariş no)
+   * hiçbir desene uymaz. Ama sayfa çoğu zaman yanlarına ne olduklarını yazıyor:
+   * "Adres: ...". Burada değere değil etikete bakıyoruz.
+   *
+   * Bu kategori varsayılan olarak kapalı: aşırı maskeleme sayfayı okunmaz hale
+   * getirir ve kullanıcı neden olduğunu anlamaz. İsteyen açar. */
+  const LABEL_WORDS = [
+    // TR
+    'adres', 'ev adresi', 'iş adresi', 'ad soyad', 'adı soyadı', 'ad[ıi]', 'soyad[ıi]?', 'isim',
+    'doğum tarihi', 'sipariş no(?:su)?', 'sipariş numarası', 'müşteri no(?:su)?', 'müşteri numarası',
+    'kullanıcı adı', 'tc kimlik(?: no)?', 'vergi no', 'plaka', 'posta kodu',
+    // EN
+    'address', 'home address', 'billing address', 'shipping address', 'full name', 'first name',
+    'last name', 'surname', 'name', 'date of birth', 'birth date', 'birthday', 'dob',
+    'order (?:no|number|id)', 'customer (?:no|number|id)', 'account (?:no|number)', 'username',
+    'user name', 'postal code', 'zip(?: code)?', 'licen[cs]e plate',
+    // ES / PT
+    'direcci[óo]n', 'nombre', 'apellidos?', 'fecha de nacimiento', 'pedido', 'cliente', 'usuario',
+    'endere[çc]o', 'data de nascimento', 'usu[áa]rio',
+    // DE
+    'adresse', 'anschrift', 'vorname', 'nachname', 'geburtsdatum', 'bestellnummer',
+    'kundennummer', 'benutzername',
+    // FR
+    'adresse', 'nom', 'pr[ée]nom', 'date de naissance', 'commande', 'num[ée]ro client',
+    "nom d'utilisateur",
+    // KR / JA
+    '주소', '이름', '성명', '생년월일', '주문번호', '고객번호', '아이디',
+    '住所', '氏名', '名前', '生年月日', '注文番号', 'お客様番号'
+  ];
+
+  /* Değer, bir alan değeri gibi mi duruyor? Paragraf maskelemek istemiyoruz. */
+  function isFieldValue(text) {
+    const v = String(text || '').trim();
+    if (v.length < 2 || v.length > 80) return false;
+    if (!/[\p{L}\p{N}]/u.test(v)) return false;
+    if (/[.!?]\s+\p{Lu}/u.test(v)) return false;          // cümle gibi: düz yazı
+    if (v.split(/\s+/).length > 10) return false;         // fazla uzun
+    if (/^(?:yok|none|n\/a|-|—|belirtilmemiş|unknown|null)$/i.test(v)) return false;
+    return true;
+  }
+  function labelValue(_m, _o, _t, caps) {
+    return isFieldValue(caps && caps[caps.length - 1]);
+  }
+
+  /* Bir hücrenin/etiketin kendisi bir alan adı mı? Tablo ve tanım listelerinde
+   * etiket ayrı bir düğümde durur, iki nokta da bulunmayabilir. */
+  let labelOnlyRe = null;
+  function looksLikeLabelText(text) {
+    const v = String(text || '').trim().replace(/[:：]\s*$/, '');
+    if (!v || v.length > 28) return false;
+    if (!labelOnlyRe) {
+      labelOnlyRe = new RegExp('^(?:' + LABEL_WORDS.join('|') + ')$', 'iu');
+    }
+    return labelOnlyRe.test(v);
+  }
+
+  function labelPattern() {
+    // Etiket, iki nokta, sonra satır sonuna ya da ayraca kadar olan değer
+    const words = LABEL_WORDS.join('|');
+    return new RegExp(
+      // Uzunluk sınırı burada değil isFieldValue'da: regexte kesersek uzun bir
+      // değerin ilk 80 karakteri maskelenip kuyruğu ekranda kalırdı.
+      '(?:^|[^\\p{L}\\p{N}])((?:' + words + '))\\s*[:：]\\s*([^\\n\\r·|•;]{2,200})',
+      'giu');
+  }
+
   /* ================= desen listesi ================= */
 
   const escapeRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -307,6 +375,7 @@
     }
     if (c.phone) p.push({ name: 'phone', re: /(?<!\d|\d[.,:])\+?\(?\d{1,4}\)?(?:[ .-]?\(?\d{1,4}\)?){2,6}(?!\d|[.,:]\d)/g, check: phoneDigits });
     if (c.ip) p.push({ name: 'ip', re: /\b(?:\d{1,3}\.){3}\d{1,3}\b/g, check: ipv4 });
+    if (c.label) p.push({ name: 'label', re: labelPattern(), group: 2, check: labelValue });
     const words = (s.customWords || []).map(w => String(w).trim()).filter(w => w.length >= 2);
     if (c.custom && words.length) {
       words.sort((a, b) => b.length - a.length);
@@ -359,7 +428,7 @@
   /* Sabit ***** metni kısalttığı için tablo/satır düzenini kaydırıyordu.
    * 'same' aynı uzunlukta maskeler, 'partial' son 4 haneyi bırakır.
    * Sırlar ve özel kelimeler hiçbir biçimde kısmi gösterilmez. */
-  const FULL_ONLY = new Set(['secret', 'custom']);
+  const FULL_ONLY = new Set(['secret', 'custom', 'label']);
 
   function sameLength(s) {
     return s.replace(/[A-Za-z0-9]/g, '*');
@@ -437,6 +506,10 @@
     defaultRegions,
     looksLikeSensitiveField,
     isTypingSensitive,
+    labelValue,
+    isFieldValue,
+    looksLikeLabelText,
+    LABEL_WORDS,
     ID_REGIONS,
     LEGACY_REGIONS,
     validators: {
