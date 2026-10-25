@@ -37,6 +37,70 @@ async function launch(id) {
   await run('open', ['-b', id]);
 }
 
+/* ---------- pencere başlığına göre kurallar ----------
+ * Uygulamanın tamamını değil tek pencereyi gizlemek için: başlığı eşleşen
+ * pencere simge durumuna küçültülür, yayın bitince geri açılır.
+ *
+ * Eşleştirme AppleScript içinde değil JS'te yapılıyor: kullanıcının yazdığı
+ * desen betiğe gömülseydi tırnak kaçışı bir enjeksiyon yüzeyi olurdu. Betik
+ * yalnızca pencereleri listeler, kıyas burada yapılır. */
+const asStr = s => '"' + String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
+
+async function listWindows() {
+  const script = `tell application "System Events"
+  set out to ""
+  repeat with p in (every process whose background only is false)
+    repeat with w in (every window of p)
+      try
+        set out to out & (name of p) & tab & (name of w) & linefeed
+      end try
+    end repeat
+  end repeat
+  return out
+end tell`;
+  const out = await osa(script, 12000).catch(() => '');
+  return out.split('\n').map(line => {
+    const i = line.indexOf('\t');
+    if (i < 0) return null;
+    const proc = line.slice(0, i).trim();
+    const title = line.slice(i + 1).trim();
+    return proc && title ? { process: proc, title } : null;
+  }).filter(Boolean);
+}
+
+/* Türkçe'nin noktalı/noktasız i'si: "GARANTİ".toLowerCase() JavaScript'te
+ * "garanti" değil "garanti̇" verir (İ, altta birleşen bir nokta bırakır), yani
+ * desen hiçbir zaman tutmazdı. İki tarafı da aynı şekilde katlıyoruz. */
+const foldTr = s => String(s).toLowerCase()
+  .replace(/\u0307/g, '')          // İ küçülünce geriye kalan birleşen nokta: at
+  .replace(/[ıİI]/g, 'i');         // kalan noktalı/noktasız i'leri tek harfe indir
+
+function matchWindows(windows, patterns) {
+  const pats = (patterns || [])
+    .map(p => String(p).trim())
+    .filter(p => p.length >= 2)
+    .map(foldTr);
+  if (!pats.length) return [];
+  return windows.filter(w => {
+    const hay = foldTr(w.process + ' ' + w.title);
+    return pats.some(p => hay.includes(p));
+  });
+}
+
+async function setWindowMinimized(proc, title, min) {
+  const script = `tell application "System Events" to tell process ${asStr(proc)}
+  try
+    set value of attribute "AXMinimized" of (every window whose name is ${asStr(title)}) to ${min}
+  end try
+end tell`;
+  await osa(script, 8000).catch(() => {});
+}
+
+/* Küçültülemeyen pencereler (tam ekran gibi) için son çare: uygulamayı gizle */
+async function hideProcess(proc) {
+  await osa(`tell application "System Events" to set visible of process ${asStr(proc)} to false`, 6000).catch(() => {});
+}
+
 /* ---------- installed apps ---------- */
 const APP_DIRS = ['/Applications', '/System/Applications', '/System/Applications/Utilities', path.join(os.homedir(), 'Applications')];
 function readPlist(p) {
@@ -89,4 +153,4 @@ async function setDesktopIcons(show) {
   await run('killall', ['Finder']).catch(() => {});
 }
 
-module.exports = { desktopIconsShown, setDesktopIcons, runningBundleIds, isRunning, setVisible, setMinimized, quit, launch, installedApps, focusShortcutsInstalled, setFocus, FOCUS_ON, FOCUS_OFF };
+module.exports = { listWindows, matchWindows, setWindowMinimized, hideProcess, desktopIconsShown, setDesktopIcons, runningBundleIds, isRunning, setVisible, setMinimized, quit, launch, installedApps, focusShortcutsInstalled, setFocus, FOCUS_ON, FOCUS_OFF };

@@ -35,6 +35,19 @@ async function render() {
   chips.querySelectorAll('.chip').forEach(c => c.remove());
   s.maskWords.forEach((w, i) => { const c = document.createElement('span'); c.className = 'chip'; c.textContent = w; const b = document.createElement('button'); b.textContent = '×'; b.onclick = () => { s.maskWords.splice(i, 1); save(); }; c.appendChild(b); chips.insertBefore(c, input); });
   renderMasking();
+  // pencere başlığı kuralları
+  const tb = $('titlechips'), ti = $('titleInput');
+  tb.querySelectorAll('.chip').forEach(c => c.remove());
+  (s.titleRules || []).forEach((w, i) => {
+    const c = document.createElement('span');
+    c.className = 'chip';
+    c.textContent = w;
+    const b = document.createElement('button');
+    b.textContent = '×';
+    b.onclick = () => { s.titleRules.splice(i, 1); save(); };
+    c.appendChild(b);
+    tb.insertBefore(c, ti);
+  });
   // log
   $('log').innerHTML = (state.log.length ? state.log : [{ t: Date.now(), msg: 'Ready.' }]).map(l => `<div><b>${new Date(l.t).toLocaleTimeString()}</b> ${l.msg}</div>`).join('');
 }
@@ -109,6 +122,24 @@ async function init() {
   $('focus').onchange = e => { state.settings.focus = e.target.checked; save(); };
   $('hideSelf').onchange = e => { state.settings.hideSelf = e.target.checked; save(); };
   $('openPB').onclick = () => window.api.openPrivateBrowser();
+  const tbox = $('titlechips'), tinp = $('titleInput');
+  tbox.onclick = () => tinp.focus();
+  tinp.onkeydown = e => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      const w = tinp.value.trim();
+      tinp.value = '';
+      // tek harflik desen neredeyse her pencereyi yakalar
+      if (w.length < 2) { tinp.placeholder = 'At least two characters'; return; }
+      state.settings.titleRules = state.settings.titleRules || [];
+      if (!state.settings.titleRules.some(x => x.toLowerCase() === w.toLowerCase())) {
+        state.settings.titleRules.push(w);
+        save();
+      }
+    } else if (e.key === 'Backspace' && !tinp.value && (state.settings.titleRules || []).length) {
+      state.settings.titleRules.pop(); save();
+    }
+  };
   $('bridge').onchange = e => { state.settings.bridge = e.target.checked; save(); };
   $('copyToken').onclick = async () => {
     try { await navigator.clipboard.writeText(state.settings.bridgeToken || ''); $('copyToken').textContent = 'Copied'; setTimeout(() => { $('copyToken').textContent = 'Copy'; }, 1500); } catch (x) {}

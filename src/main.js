@@ -11,6 +11,7 @@ const isMac = process.platform === 'darwin';
 const SETTINGS_FILE = () => path.join(app.getPath('userData'), 'settings.json');
 const DEFAULTS = {
   rules: [],                 // [{id, name, path, action:'hide'|'minimize'|'quit', relaunch:true}]
+  titleRules: [],            // pencere başlığında geçen metinler: eşleşen pencere yayında küçültülür
   guard: true,               // re-hide apps that pop up while live
   focus: true,               // switch Focus (Do Not Disturb) on while live
   hideSelf: true,            // keep StreamMask windows out of screen capture
@@ -55,7 +56,7 @@ function applyBridge() {
 }
 
 /* ---------------- live state ---------------- */
-const live = { on: false, since: 0, snapshot: [], focusApplied: false, desktopHidden: false, log: [] };
+const live = { on: false, since: 0, snapshot: [], focusApplied: false, desktopHidden: false, titleHidden: [], log: [] };
 let guardTimer = null;
 let controlWin = null, tray = null;
 
@@ -103,11 +104,37 @@ async function goLive() {
     try { if (await mac.desktopIconsShown()) { await mac.setDesktopIcons(false); live.desktopHidden = true; log('Desktop icons hidden'); } }
     catch (e) { log('Desktop icons: failed (' + e.message + ')'); }
   }
+  await applyTitleRules().catch(e => log('Title rules: failed (' + e.message + ')'));
   if (settings.guard) guardTimer = setInterval(guardTick, 3000);
   log('LIVE');
 }
+/* Başlığı eşleşen pencereleri küçült. Günlüğe yalnızca uygulama adı yazılır:
+ * pencere başlığı ("Gelen Kutusu — ad@mail.com") kişisel bilgi içerebiliyor ve
+ * bu günlük yayında ekranda duruyor olabilir. */
+async function applyTitleRules() {
+  const pats = settings.titleRules || [];
+  if (!pats.length) return 0;
+  const self = app.getName();
+  const wins = (await mac.listWindows().catch(() => [])).filter(w => w.process !== self);
+  let n = 0;
+  for (const w of mac.matchWindows(wins, pats)) {
+    if (live.titleHidden.some(h => h.process === w.process && h.title === w.title)) continue;
+    await mac.setWindowMinimized(w.process, w.title, true);
+    live.titleHidden.push({ process: w.process, title: w.title });
+    log(`${w.process}: a window matching your title rules was minimized`);
+    n++;
+  }
+  return n;
+}
+async function restoreTitleRules() {
+  for (const h of live.titleHidden) await mac.setWindowMinimized(h.process, h.title, false);
+  if (live.titleHidden.length) log(`${live.titleHidden.length} window(s) restored`);
+  live.titleHidden = [];
+}
+
 async function guardTick() {
   if (!live.on) return;
+  await applyTitleRules().catch(() => {});      // yayında açılan pencereleri de yakala
   const visible = await mac.runningBundleIds({ visibleOnly: true }).catch(() => null);
   if (!visible) return;
   for (const rule of settings.rules) {
@@ -123,6 +150,7 @@ async function endLive() {
   if (!live.on) return;
   clearInterval(guardTimer); guardTimer = null;
   live.on = false;
+  live.snapshot = live.snapshot;
   log('Ending stream – restoring…');
   for (const s of live.snapshot) {
     if (!s.wasRunning) continue;
@@ -134,6 +162,7 @@ async function endLive() {
     } catch (e) { log(`${s.name}: restore failed (${e.message})`); }
   }
   if (live.focusApplied) { await mac.setFocus(false); live.focusApplied = false; log('Focus off'); }
+  await restoreTitleRules().catch(() => {});
   if (live.desktopHidden) { try { await mac.setDesktopIcons(true); log('Desktop icons restored'); } catch (e) { log('Desktop icons: restore failed'); } live.desktopHidden = false; }
   live.snapshot = [];
   log('Offline');

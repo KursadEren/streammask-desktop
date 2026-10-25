@@ -4,6 +4,7 @@ Open-source stream privacy tool for macOS. One click before you go live:
 
 - **Hides the apps you choose** (WhatsApp, Mail, Telegram, Discord, Slack…) – hide, minimize or quit, and restores them when the stream ends.
 - **Guard mode** – if a hidden app pops up during the stream, it is hidden again within seconds.
+- **Hide windows by title** – a window whose title contains text you listed is minimized while live and restored after. For hiding one mail window or one bank tab without hiding the whole app. Titles are never written to the activity log, since a title like "Inbox — you@example.com" is itself the thing you are hiding.
 - **Hide desktop icons** (optional) – files and folders on your Desktop disappear while live and come back when you end.
 - **Silences notifications** – switches macOS Focus (Do Not Disturb) on while live, off afterwards.
 - **Private Browser** – a browser window that **screen capture cannot see**. Open your bank, e-mail or DMs there; OBS, Discord, Zoom, Meet and macOS screen recording show nothing, even when you share the whole screen. Personal info on pages inside it is masked there too, with the same engine as the [StreamMask Chrome extension](https://github.com/KursadEren/streammask): phone numbers, e-mails, ID numbers for ten countries, IBANs, cards, IP addresses, API keys and tokens, and your own words — inside Shadow DOM as well. You choose the categories, the countries and how masks look (`*****`, same length, last 4, or a label) in the control panel.
