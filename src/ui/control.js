@@ -96,7 +96,23 @@ function renderMasking() {
   }
 }
 
-async function save() { state.settings = await window.api.saveSettings(state.settings); render(); }
+async function save() { state.settings = await window.api.saveSettings(state.settings); render(); refreshAccessibility(); }
+/* Erişilebilirlik izni olmadan gizleme komutları sessizce hiçbir şey yapmıyor.
+ * Kullanıcı bunu yayına çıkmadan önce bilmeli. */
+async function refreshAccessibility() {
+  const ok = await window.api.accessibilityReady();
+  const c = $('axCard');
+  const needed = (state.settings.rules || []).length || (state.settings.titleRules || []).length;
+  c.hidden = ok || !needed;
+  if (c.hidden) return;
+  c.className = 'card warn';
+  c.innerHTML = '<b>Accessibility permission needed.</b> Without it macOS silently ignores the ' +
+    'commands that hide apps and windows, so going live would protect nothing. ' +
+    'System Settings → Privacy &amp; Security → Accessibility → allow StreamMask Desktop.' +
+    '<button class="btn" id="axRecheck" style="margin-top:6px">Check again</button>';
+  $('axRecheck').onclick = refreshAccessibility;
+}
+
 async function refreshFocus() {
   const ok = await window.api.focusReady();
   const c = $('focusCard');
@@ -112,7 +128,7 @@ async function refreshFocus() {
 async function init() {
   state = await window.api.state();
   running = await window.api.runningApps().catch(() => []);
-  render(); refreshFocus();
+  render(); refreshFocus(); refreshAccessibility();
   window.api.onState(s => { state = s; render(); });
   setInterval(async () => { running = await window.api.runningApps().catch(() => running); if (state.live) render(); }, 5000);
 

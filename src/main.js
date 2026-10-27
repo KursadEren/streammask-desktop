@@ -82,6 +82,11 @@ async function goLive() {
   if (live.on) return;
   live.on = true; live.since = Date.now(); live.snapshot = []; live.log = [];
   log('Going live…');
+  // İzin yoksa gizleme komutları hata vermeden hiçbir şey yapmıyor; sessiz
+  // kalmak yerine en başta söylüyoruz, kullanıcı korunduğunu sanmasın.
+  if ((settings.rules.length || (settings.titleRules || []).length) && !(await mac.accessibilityEnabled())) {
+    log('⚠︎ Accessibility permission missing — apps and windows will NOT be hidden. System Settings → Privacy & Security → Accessibility.');
+  }
   const running = await mac.runningBundleIds().catch(() => []);
   for (const rule of settings.rules) {
     const wasRunning = running.includes(rule.id);
@@ -280,6 +285,7 @@ const pbActive = () => pb && pb.tabs.find(t => t.id === pb.active);
 /* ---------------- IPC ---------------- */
 ipcMain.handle('state', () => publicState());
 ipcMain.handle('focusReady', () => mac.focusShortcutsInstalled());
+ipcMain.handle('accessibilityReady', () => mac.accessibilityEnabled());
 ipcMain.handle('setLive', async (e, on) => { if (on) await goLive(); else await endLive(); return publicState(); });
 ipcMain.handle('installedApps', async () => mac.installedApps());
 ipcMain.handle('runningApps', async () => mac.runningBundleIds());

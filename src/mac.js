@@ -20,13 +20,37 @@ async function runningBundleIds({ visibleOnly = false } = {}) {
 }
 async function isRunning(id) { return (await runningBundleIds()).includes(id); }
 
+/* Erişilebilirlik izni olmadan System Events pencere işlemlerini sessizce
+ * yutuyor: "set visible to false" hata vermeden hiçbir şey yapmıyor. Bir
+ * gizlilik aracında bunu fark etmemek en kötüsü — kullanıcı günlükte
+ * "hidden" görüp yayına çıkıyor, uygulama ekranda duruyor. Bu yüzden izni
+ * kontrol ediyor ve her işlemin sonucunu doğruluyoruz. */
+async function accessibilityEnabled() {
+  const out = await osa('tell application "System Events" to get UI elements enabled', 6000).catch(() => 'false');
+  return String(out).trim() === 'true';
+}
+
+async function isVisible(id) {
+  const out = await osa(`tell application "System Events" to get visible of (first process whose bundle identifier is "${id}")`, 6000).catch(() => '');
+  return String(out).trim() === 'true';
+}
+
+/* Gizleme/küçültme başarılı mı: işlem sonrası durumu tekrar okuyup karşılaştırır.
+ * Başaramazsa hata fırlatır, çağıran da kullanıcıya doğruyu söyler. */
 async function setVisible(id, visible) {
   if (!safeId(id)) throw new Error('bad id');
   await osa(`tell application "System Events" to set visible of (every process whose bundle identifier is "${id}") to ${visible}`);
+  await new Promise(r => setTimeout(r, 250));
+  if (await isVisible(id) !== visible) {
+    throw new Error(await accessibilityEnabled()
+      ? 'the app refused to be hidden'
+      : 'Accessibility permission not granted');
+  }
 }
+
 async function setMinimized(id, min) {
   if (!safeId(id)) throw new Error('bad id');
-  await osa(`tell application "System Events" to tell (every process whose bundle identifier is "${id}") to set value of attribute "AXMinimized" of every window to ${min}`).catch(() => {});
+  await osa(`tell application "System Events" to tell (every process whose bundle identifier is "${id}") to set value of attribute "AXMinimized" of every window to ${min}`);
 }
 async function quit(id) {
   if (!safeId(id)) throw new Error('bad id');
@@ -153,4 +177,4 @@ async function setDesktopIcons(show) {
   await run('killall', ['Finder']).catch(() => {});
 }
 
-module.exports = { listWindows, matchWindows, setWindowMinimized, hideProcess, desktopIconsShown, setDesktopIcons, runningBundleIds, isRunning, setVisible, setMinimized, quit, launch, installedApps, focusShortcutsInstalled, setFocus, FOCUS_ON, FOCUS_OFF };
+module.exports = { accessibilityEnabled, isVisible, listWindows, matchWindows, setWindowMinimized, hideProcess, desktopIconsShown, setDesktopIcons, runningBundleIds, isRunning, setVisible, setMinimized, quit, launch, installedApps, focusShortcutsInstalled, setFocus, FOCUS_ON, FOCUS_OFF };

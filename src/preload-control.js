@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('api', {
   state: () => ipcRenderer.invoke('state'),
   focusReady: () => ipcRenderer.invoke('focusReady'),
+  accessibilityReady: () => ipcRenderer.invoke('accessibilityReady'),
   setLive: on => ipcRenderer.invoke('setLive', on),
   installedApps: () => ipcRenderer.invoke('installedApps'),
   runningApps: () => ipcRenderer.invoke('runningApps'),
