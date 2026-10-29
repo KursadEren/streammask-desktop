@@ -1,6 +1,11 @@
 # StreamMask Desktop
 
-Open-source stream privacy tool for macOS. One click before you go live:
+Open-source stream privacy tool for **macOS only**. Everything below talks to
+macOS APIs, so a Windows or Linux build would start and do nothing; it is not
+shipped until those are written. The [browser extension](https://github.com/KursadEren/streammask)
+works everywhere, on any OS.
+
+One click before you go live:
 
 - **Hides the apps you choose** (WhatsApp, Mail, Telegram, Discord, Slack…) – hide, minimize or quit, and restores them when the stream ends.
 - **Guard mode** – if a hidden app pops up during the stream, it is hidden again within seconds.
