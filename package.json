@@ -40,7 +40,8 @@
         "portable"
       ],
       "icon": "assets/icon.png"
-    }
+    },
+    "afterPack": "scripts/adhoc-sign.js"
   },
   "devDependencies": {
     "electron": "^44.4.1",
