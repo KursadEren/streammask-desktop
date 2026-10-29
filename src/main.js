@@ -3,7 +3,7 @@ const { app, BrowserWindow, WebContentsView, ipcMain, globalShortcut, Tray, Menu
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
-const mac = require('./mac');
+const mac = require('./platform');   // platforma göre mac.js ya da win.js
 const { Bridge } = require('./bridge');
 const detect = require('./content/detect.js');   // ülke listesi ve varsayılanlar için
 
@@ -68,7 +68,7 @@ function log(msg) {
 function publicState() {
   return {
     live: live.on, since: live.since, settings, log: live.log, focusReady: null,
-    platform: process.platform, bridgeClients: bridge.connections,
+    platform: process.platform, platformSupported: mac.supported, bridgeClients: bridge.connections,
     maskMeta: { regions: detect.ID_REGIONS, defaultRegions: detect.defaultRegions(app.getLocale()) }
   };
 }

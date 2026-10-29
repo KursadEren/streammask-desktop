@@ -1,9 +1,22 @@
 # StreamMask Desktop
 
-Open-source stream privacy tool for **macOS only**. Everything below talks to
-macOS APIs, so a Windows or Linux build would start and do nothing; it is not
-shipped until those are written. The [browser extension](https://github.com/KursadEren/streammask)
-works everywhere, on any OS.
+Open-source stream privacy tool for **macOS and Windows**. The
+[browser extension](https://github.com/KursadEren/streammask) handles the masking
+part and runs on any OS.
+
+| | macOS | Windows | Linux |
+|---|---|---|---|
+| Hide / minimize / quit chosen apps | ✅ | ✅ | ✗ |
+| Hide windows by title | ✅ | ✅ | ✗ |
+| Hide desktop icons | ✅ | ✅ | ✗ |
+| Private Browser, invisible to screen capture | ✅ | ✅ | ✗ |
+| Silence notifications | ✅ | ✗ | ✗ |
+
+Windows has no documented way to toggle Focus Assist, so notifications are not
+silenced there — the app says so rather than pretending. Linux is not shipped at
+all: on Wayland an application cannot list or hide another application's windows
+by design, and Electron cannot hide a window from screen capture on Linux. A
+build that launched and did nothing would be worse than no build.
 
 One click before you go live:
 
