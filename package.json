@@ -1,7 +1,7 @@
 {
   "name": "streammask-desktop",
   "productName": "StreamMask Desktop",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Open-source stream privacy tool: hides chosen apps and notifications while you're live, and gives you a browser window that screen capture can't see.",
   "main": "src/main.js",
   "license": "MIT",
